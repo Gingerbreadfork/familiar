@@ -11,6 +11,7 @@
 </p>
 
 <p align="center">
+  <a href="../../releases/latest"><img src="https://img.shields.io/github/v/release/Gingerbreadfork/familiar?style=flat-square&labelColor=26282c&color=23c552&label=release" alt="Latest release"></a>
   <a href="../../actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/Gingerbreadfork/familiar/ci.yml?branch=main&style=flat-square&labelColor=26282c&label=build" alt="Build status"></a>
   <img src="https://img.shields.io/badge/platform-Linux-23c552?style=flat-square&labelColor=26282c" alt="Runs on Linux">
   <a href="LICENSE"><img src="https://img.shields.io/github/license/Gingerbreadfork/familiar?style=flat-square&labelColor=26282c&color=23c552" alt="MIT license"></a>
@@ -117,9 +118,29 @@ Measured on an MX Master 4 over Bolt:
 - Bluetooth is untested; development has been over a Logi Bolt receiver.
 - Windows. The protocol library is portable, the rest is Linux only so far.
 - Firmware updates.
-- Distribution packages. For now it is built from source.
+- Packages other than `.deb` and `.rpm`.
 
-## Install for your user
+## Install
+
+Packages for each release are on the
+[Releases page](https://github.com/Gingerbreadfork/familiar/releases/latest):
+a `.deb` for Debian and Ubuntu and an `.rpm` for Fedora, with a `SHA256SUMS`
+file alongside. They are built for x86_64.
+
+```sh
+sudo apt install ./Familiar_<version>_amd64.deb       # Debian, Ubuntu
+sudo dnf install ./Familiar-<version>-1.x86_64.rpm    # Fedora
+```
+
+The package holds the daemon, the `familiar` command and the window, the udev
+rule that lets you reach the mouse without root, and a systemd user service.
+The daemon starts by itself from your next login. To start it straight away:
+
+```sh
+systemctl --user start familiard
+```
+
+### From source
 
 Access to `/dev/hidraw*` is needed. Installing the udev rule once is the only
 step that needs root; everything else runs as your user:
@@ -145,8 +166,8 @@ packaging/install-user.sh --app
 ```
 
 The window is a client of the daemon only: closing it changes nothing, and
-every change it makes lands in the same config file. To make .deb and .rpm
-packages instead, run `pnpm --dir gui tauri build`.
+every change it makes lands in the same config file. To build the `.deb` and
+`.rpm` packages instead, run `packaging/build-packages.sh`.
 
 The daemon runs under a systemd watchdog: if it ever stops responding,
 systemd restarts it. The service starts with `graphical-session.target`.
@@ -231,6 +252,16 @@ pnpm --dir gui tauri dev          # the window itself, talking to the daemon
 
 No hardware is needed for the tests: `familiar-hidpp` includes a simulated
 mouse behind a receiver, and the daemon's tests run against it.
+
+### Releasing
+
+Pushing a tag like `v0.2.0` runs the release workflow, which runs the tests,
+builds the packages on Ubuntu 22.04 and attaches them to a GitHub release with
+their checksums. The tag has to match the version in `Cargo.toml`,
+`gui/src-tauri/Cargo.toml`, `gui/src-tauri/tauri.conf.json` and
+`gui/package.json`; `scripts/check-version.sh` tells you whether all four
+agree. Starting the workflow by hand builds the packages and keeps them with
+the run, without releasing anything.
 
 ### Layout
 

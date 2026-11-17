@@ -7,3 +7,4 @@ Icon=io.github.gingerbreadfork.Familiar
 Terminal=false
 Categories=Settings;HardwareSettings;
 Keywords=mouse;MX Master;Logitech;buttons;gestures;haptics;scroll;
+StartupWMClass=familiar-gui

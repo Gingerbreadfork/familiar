@@ -26,9 +26,57 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["deb", "rpm"],
+    "targets": [
+      "deb",
+      "rpm"
+    ],
+    "publisher": "Familiar",
+    "homepage": "https://github.com/Gingerbreadfork/familiar",
+    "licenseFile": "../../LICENSE",
     "category": "Utility",
     "shortDescription": "Settings for Logitech MX mice",
-    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.png"]
+    "longDescription": "Familiar sets up the Logitech MX Master 4 on Linux: button remapping and gestures, smooth scrolling, thumb wheel modes, haptics and Easy-Switch. It installs a small background service, a command line tool and a settings window, and keeps everything on your computer.",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.png"
+    ],
+    "linux": {
+      "deb": {
+        "depends": [
+          "libudev1"
+        ],
+        "desktopTemplate": "familiar.desktop",
+        "files": {
+          "/usr/bin/familiard": "../../target/release/familiard",
+          "/usr/bin/familiar": "../../target/release/familiar",
+          "/usr/lib/udev/rules.d/70-familiar.rules": "../../packaging/udev/70-familiar.rules",
+          "/usr/lib/systemd/user/familiard.service": "../../packaging/systemd/familiard.service",
+          "/usr/lib/systemd/user/familiar-haptic@.service": "../../packaging/systemd/familiar-haptic@.service",
+          "/usr/share/doc/familiar/config.example.toml": "../../packaging/config.example.toml",
+          "/usr/share/doc/familiar/copyright": "../../LICENSE"
+        },
+        "postInstallScript": "../../packaging/package/after-install.sh",
+        "preRemoveScript": "../../packaging/package/before-remove.sh"
+      },
+      "rpm": {
+        "depends": [
+          "systemd-libs"
+        ],
+        "desktopTemplate": "familiar.desktop",
+        "files": {
+          "/usr/bin/familiard": "../../target/release/familiard",
+          "/usr/bin/familiar": "../../target/release/familiar",
+          "/usr/lib/udev/rules.d/70-familiar.rules": "../../packaging/udev/70-familiar.rules",
+          "/usr/lib/systemd/user/familiard.service": "../../packaging/systemd/familiard.service",
+          "/usr/lib/systemd/user/familiar-haptic@.service": "../../packaging/systemd/familiar-haptic@.service",
+          "/usr/share/doc/familiar/config.example.toml": "../../packaging/config.example.toml",
+          "/usr/share/licenses/familiar/LICENSE": "../../LICENSE"
+        },
+        "postInstallScript": "../../packaging/package/after-install.sh",
+        "preRemoveScript": "../../packaging/package/before-remove.sh"
+      }
+    }
   }
 }
