@@ -42,7 +42,7 @@ export async function relaunch(): Promise<void> {
 
 /** The version of the window itself. */
 export async function appVersion(): Promise<string> {
-	if (!inApp) return '0.1.1';
+	if (!inApp) return '';
 	const { getVersion } = await import('@tauri-apps/api/app');
 	return getVersion();
 }
