@@ -1,0 +1,47 @@
+[workspace]
+resolver = "3"
+members = [
+    "crates/familiar-hidpp",
+    "crates/familiar-hidraw",
+    "crates/familiar-core",
+    "crates/familiar-client",
+    "crates/familiard",
+    "crates/familiar-cli",
+]
+# The app has its own lock file and heavier system dependencies.
+exclude = ["gui/src-tauri"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.89"
+license = "MIT"
+
+[workspace.dependencies]
+hidpp = { package = "familiar-hidpp", path = "crates/familiar-hidpp" }
+hidpp-hidraw = { package = "familiar-hidraw", path = "crates/familiar-hidraw" }
+familiar-core = { path = "crates/familiar-core" }
+familiar-client = { path = "crates/familiar-client" }
+thiserror = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order"] }
+clap = { version = "4", features = ["derive"] }
+libc = "0.2"
+ctrlc = { version = "3", features = ["termination"] }
+anyhow = "1"
+toml = "1"
+toml_edit = "0.25"
+zbus = { version = "6", default-features = false, features = ["tokio", "proxy", "service"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "signal", "time"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+notify = "8"
+udev = "0.9"
+evdev = "0.13"
+futures-util = { version = "0.3", default-features = false }
+
+[workspace.lints.rust]
+unsafe_op_in_unsafe_fn = "deny"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }

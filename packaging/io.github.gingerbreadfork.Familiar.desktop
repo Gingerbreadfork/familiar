@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Familiar
+Comment=Buttons, scrolling and haptics for your Logitech MX mouse
+Exec=familiar-gui
+Icon=io.github.gingerbreadfork.Familiar
+Terminal=false
+Categories=Settings;HardwareSettings;
+Keywords=mouse;MX Master;Logitech;buttons;gestures;haptics;scroll;

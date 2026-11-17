@@ -1,0 +1,6 @@
+[Unit]
+Description=Play the %i haptic waveform on the mouse
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/familiar haptic %i

@@ -1,0 +1,17 @@
+[package]
+name = "familiar-client"
+description = "D-Bus client for familiard, shared by the command line tool and the app"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+familiar-core.workspace = true
+anyhow.workspace = true
+serde.workspace = true
+zbus.workspace = true
+futures-util.workspace = true
+
+[lints]
+workspace = true

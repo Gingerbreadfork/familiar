@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- A mouse in side view, drawn in one line, with the status light for an eye. -->
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#303238"/><stop offset="1" stop-color="#1b1c1f"/></linearGradient>
+    <radialGradient id="light" cx="0.4" cy="0.35" r="0.7"><stop offset="0" stop-color="#7dffa0"/><stop offset="0.5" stop-color="#2bd45a"/><stop offset="1" stop-color="#17a341"/></radialGradient>
+  </defs>
+  <rect width="512" height="512" rx="116" fill="url(#tile)"/>
+  <rect x="5" y="5" width="502" height="502" rx="111" fill="none" stroke="#fff" stroke-opacity="0.07" stroke-width="2"/>
+  <g transform="translate(256 256) scale(0.88) translate(-264 -256)">
+    <g fill="none" stroke="#ecece9" stroke-width="33" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M300 362L386 362C424 362 446 340 450 304"/>
+      <path d="M78 336C122 260 190 204 266 204C332 204 366 250 366 300C366 340 344 362 310 362L120 362C90 362 70 352 78 336Z" fill="#27292d"/>
+      <circle cx="228" cy="208" r="58" fill="#27292d"/>
+    </g>
+    <circle cx="146" cy="310" r="16" fill="url(#light)"/>
+  </g>
+</svg>

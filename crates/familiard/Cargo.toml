@@ -1,0 +1,30 @@
+[package]
+name = "familiard"
+description = "Familiar daemon: applies mouse settings and serves the D-Bus API"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+hidpp.workspace = true
+hidpp-hidraw.workspace = true
+familiar-core.workspace = true
+anyhow.workspace = true
+tokio.workspace = true
+zbus.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+notify.workspace = true
+udev.workspace = true
+serde_json.workspace = true
+libc.workspace = true
+evdev.workspace = true
+futures-util.workspace = true
+
+[lints]
+workspace = true
+
+[dev-dependencies]
+hidpp = { workspace = true, features = ["mock"] }
+toml.workspace = true

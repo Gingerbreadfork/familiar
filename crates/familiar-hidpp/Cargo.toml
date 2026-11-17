@@ -1,0 +1,18 @@
+[package]
+name = "familiar-hidpp"
+description = "Logitech HID++ 2.0 protocol: framing, feature discovery and typed feature access"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[features]
+serde = ["dep:serde"]
+mock = []
+
+[dependencies]
+thiserror.workspace = true
+serde = { workspace = true, optional = true }
+
+[lints]
+workspace = true

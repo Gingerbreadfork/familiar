@@ -1,0 +1,223 @@
+/* The window borrows the mouse's own materials: Pale Grey in light mode,
+   Graphite in dark. Colour is reserved for the status light. */
+:root {
+	--shell: #dcddda;
+	--surface: #e9eae7;
+	--raised: #f6f6f4;
+	--ink: #222427;
+	--muted: #63666b;
+	--line: rgb(34 36 39 / 0.13);
+	--line-strong: rgb(34 36 39 / 0.28);
+	--led: #23c552;
+	--led-glow: rgb(35 197 82 / 0.45);
+	--danger: #b42318;
+	--shadow: 0 1px 0 rgb(255 255 255 / 0.7) inset, 0 1px 2px rgb(0 0 0 / 0.12), 0 2px 6px rgb(0 0 0 / 0.06);
+	--press: inset 0 1px 2px rgb(0 0 0 / 0.16);
+
+	/* The drawing. */
+	--m-hi: #f7f7f5;
+	--m-mid: #dfe0dd;
+	--m-lo: #b6b7b4;
+	--m-edge: #9a9c99;
+	--m-seam: #35373a;
+	--m-panel: #e6e7e4;
+	--m-ring: rgb(0 0 0 / 0.08);
+	--m-under: #d3d4d1;
+	--m-foot: #2b2c2e;
+	--m-steel-1: #fbfcfd;
+	--m-steel-2: #bfc4c9;
+	--m-steel-3: #747a80;
+	--m-steel-4: #3d4146;
+	--m-shadow: #4a4c4a;
+	--m-glint: rgb(255 255 255 / 0.85);
+	--m-pick: rgb(34 36 39 / 0.1);
+
+	--sans: 'Barlow', system-ui, sans-serif;
+	--narrow: 'Barlow Semi Condensed', 'Barlow', system-ui, sans-serif;
+
+	--t-xs: 0.75rem;
+	--t-sm: 0.8438rem;
+	--t-body: 0.9375rem;
+	--t-lead: 1.0625rem;
+	--t-h2: 1.375rem;
+	--t-h1: 2.125rem;
+	--t-read: 3.25rem;
+
+	color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+	:root {
+		--shell: #161719;
+		--surface: #1f2023;
+		--raised: #2a2c2f;
+		--ink: #e7e7e4;
+		--muted: #9b9ea3;
+		--line: rgb(231 231 228 / 0.11);
+		--line-strong: rgb(231 231 228 / 0.24);
+		--led-glow: rgb(35 197 82 / 0.55);
+		--danger: #ff8a7a;
+		--shadow: 0 1px 0 rgb(255 255 255 / 0.06) inset, 0 1px 2px rgb(0 0 0 / 0.5), 0 2px 8px rgb(0 0 0 / 0.25);
+		--press: inset 0 1px 3px rgb(0 0 0 / 0.5);
+
+		--m-hi: #5b5d61;
+		--m-mid: #3e4043;
+		--m-lo: #26272a;
+		--m-edge: #101112;
+		--m-seam: #08090a;
+		--m-panel: #45474b;
+		--m-ring: rgb(255 255 255 / 0.05);
+		--m-under: #303235;
+		--m-foot: #121314;
+		--m-steel-1: #eef0f2;
+		--m-steel-2: #a3a8ae;
+		--m-steel-3: #5c6167;
+		--m-steel-4: #2b2e32;
+		--m-shadow: #000;
+		--m-glint: rgb(255 255 255 / 0.35);
+		--m-pick: rgb(231 231 228 / 0.12);
+
+		color-scheme: dark;
+	}
+}
+
+* {
+	box-sizing: border-box;
+}
+
+html,
+body {
+	margin: 0;
+	height: 100%;
+}
+
+body {
+	background: var(--shell);
+	color: var(--ink);
+	font-family: var(--sans);
+	font-size: var(--t-body);
+	line-height: 1.45;
+	font-variant-numeric: lining-nums tabular-nums;
+	-webkit-font-smoothing: antialiased;
+	user-select: none;
+	cursor: default;
+}
+
+#app {
+	height: 100%;
+}
+
+h1,
+h2,
+h3 {
+	font-family: var(--narrow);
+	font-weight: 600;
+	line-height: 1.1;
+	letter-spacing: -0.005em;
+	margin: 0;
+}
+
+p {
+	margin: 0;
+	max-width: 60ch;
+}
+
+input,
+textarea {
+	user-select: text;
+}
+
+button,
+input,
+select {
+	font: inherit;
+	color: inherit;
+}
+
+:focus-visible {
+	outline: 2px solid var(--ink);
+	outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.01ms !important;
+		transition-duration: 0.01ms !important;
+	}
+}
+
+/* A raised key, like the buttons on the mouse. */
+.cap {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 0.4rem;
+	min-height: 2.2rem;
+	padding: 0.35rem 0.85rem;
+	border: 1px solid var(--line-strong);
+	border-radius: 8px;
+	background: linear-gradient(var(--raised), var(--surface));
+	box-shadow: var(--shadow);
+	cursor: pointer;
+	white-space: nowrap;
+}
+
+.cap:active:not(:disabled) {
+	box-shadow: var(--press);
+	transform: translateY(1px);
+}
+
+.cap:disabled {
+	opacity: 0.45;
+	cursor: default;
+}
+
+.cap.small {
+	min-height: 1.9rem;
+	padding: 0.2rem 0.65rem;
+	font-size: var(--t-sm);
+}
+
+select,
+input[type='text'],
+input[type='number'],
+input:not([type]) {
+	min-height: 2.2rem;
+	padding: 0.3rem 0.65rem;
+	border: 1px solid var(--line-strong);
+	border-radius: 8px;
+	background-color: var(--raised);
+	box-shadow: var(--press);
+}
+
+select {
+	appearance: none;
+	padding-right: 2rem;
+	background-image:
+		linear-gradient(45deg, transparent 50%, var(--muted) 50%),
+		linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+	background-position:
+		calc(100% - 15px) 52%,
+		calc(100% - 10px) 52%;
+	background-size: 5px 5px;
+	background-repeat: no-repeat;
+	box-shadow: var(--shadow);
+	cursor: pointer;
+}
+
+/* A quiet section heading inside a sheet. */
+.section-title {
+	font-family: var(--narrow);
+	font-weight: 600;
+	font-size: var(--t-lead);
+}
+
+/* A group of settings inside a sheet. */
+.group {
+	display: grid;
+	gap: 1rem;
+	padding-top: 1.25rem;
+	border-top: 1px solid var(--line);
+}

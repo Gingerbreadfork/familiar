@@ -1,0 +1,26 @@
+[Unit]
+Description=Familiar mouse settings daemon
+PartOf=graphical-session.target
+After=graphical-session.target
+
+[Service]
+Type=notify
+NotifyAccess=main
+ExecStart=/usr/bin/familiard
+# Covers a crash or kill, when the daemon could not put the mouse back itself.
+ExecStopPost=-/usr/bin/familiar --direct undivert
+Restart=on-failure
+RestartSec=2
+WatchdogSec=30
+
+# The daemon only needs the session bus (AF_UNIX) and udev (AF_NETLINK).
+# Flow, when enabled, lifts this with a drop-in.
+RestrictAddressFamilies=AF_UNIX AF_NETLINK
+IPAddressDeny=any
+NoNewPrivileges=yes
+LockPersonality=yes
+RestrictRealtime=yes
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=graphical-session.target

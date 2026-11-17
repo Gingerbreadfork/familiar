@@ -1,0 +1,10 @@
+# Give the logged-in user access to Logitech HID++ devices and to uinput.
+# Must sort before 73-seat-late.rules, which applies the uaccess tag.
+
+ACTION=="remove", GOTO="familiar_end"
+
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="046d", TAG+="uaccess"
+SUBSYSTEM=="hidraw", KERNELS=="0005:046D:*", TAG+="uaccess"
+KERNEL=="uinput", SUBSYSTEM=="misc", TAG+="uaccess", OPTIONS+="static_node=uinput"
+
+LABEL="familiar_end"

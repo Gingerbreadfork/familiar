@@ -1,0 +1,45 @@
+# Familiar config: ~/.config/familiar/config.toml
+# familiard watches this file and applies changes as soon as it is saved.
+# `familiar set` through the daemon writes here too.
+
+version = 1
+
+# Further files merged on top, in order, relative to this one. {hostname} is
+# the short host name and missing files are skipped, so one git repository can
+# hold every machine's settings. Saves go to the file that defines the section.
+# include = ["hosts/{hostname}.toml"]
+
+# Settings for every device.
+[device."*"]
+haptic = 60            # strength 0-100, 0 turns haptics off
+
+# Settings for one model, by product ID.
+[device."B042"]
+dpi = 1600             # 200-8000 in steps of 50
+wheel = "ratchet"      # or "free"
+smartshift = 12        # wheel speed that releases the ratchet, or "off"
+torque = 60            # ratchet strength 1-100
+force = 4630           # thumb panel press threshold, 3704-6158
+wheel-invert = false
+thumb-invert = false
+
+# Settings for one unit, by its unit ID (see `familiar status`).
+# The most specific section wins: unit ID, then model, then name, then "*".
+# [device."1A2B3C4D"]
+# dpi = 2000
+
+# Buttons; see docs/buttons.md for every action and gesture.
+# [profile.default.buttons]
+# back = "key:alt+left"
+# smartshift = "smartshift:toggle"
+# haptic = { tap = "key:super", up = "key:volumeup", down = "key:volumedown" }
+
+# Scrolling; see docs/scrolling.md.
+# [profile.default.scroll]
+# smooth = true
+# [profile.default.thumb-wheel]
+# mode = "volume"
+
+[notifications]
+battery-low = 15       # percent; 0 turns the warning off
+battery-full = true

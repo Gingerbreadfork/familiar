@@ -1,0 +1,6 @@
+# Text files are checked out with LF everywhere. Tests read fenced blocks
+# out of the docs, and the shell scripts must stay runnable.
+* text=auto eol=lf
+*.png binary
+*.ico binary
+*.icns binary

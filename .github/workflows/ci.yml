@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y libudev-dev dbus
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - run: cargo fmt --check
+      - run: cargo clippy --all-targets -- -D warnings
+      - run: cargo test
+      - run: cargo build --release -p familiard
+      - name: Idle resource budget
+        run: scripts/resource-budget.sh target/release/familiard
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo test -p familiar-hidpp -p familiar-core
+
+  app:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev libsoup-3.0-dev libjavascriptcoregtk-4.1-dev librsvg2-dev libudev-dev
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: gui/pnpm-lock.yaml
+      - run: pnpm --dir gui install --frozen-lockfile
+      - run: pnpm --dir gui check
+      - run: pnpm --dir gui build
+      - run: cargo fmt --check --manifest-path gui/src-tauri/Cargo.toml
+      - run: cargo clippy --manifest-path gui/src-tauri/Cargo.toml --all-targets -- -D warnings
+      - run: cargo test --manifest-path gui/src-tauri/Cargo.toml
+      - run: pnpm --dir gui tauri build --no-bundle
