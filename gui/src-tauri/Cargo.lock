@@ -784,7 +784,7 @@ dependencies = [
 
 [[package]]
 name = "familiar-client"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "familiar-core",
@@ -795,7 +795,7 @@ dependencies = [
 
 [[package]]
 name = "familiar-core"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "familiar-hidpp",
  "serde",
@@ -806,7 +806,7 @@ dependencies = [
 
 [[package]]
 name = "familiar-gui"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "familiar-client",
  "familiar-core",
@@ -822,7 +822,7 @@ dependencies = [
 
 [[package]]
 name = "familiar-hidpp"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "serde",
  "thiserror 2.0.21",
