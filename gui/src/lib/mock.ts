@@ -70,6 +70,8 @@ export async function call<T>(cmd: string, args?: Record<string, unknown>): Prom
 			return structuredClone(hosts) as T;
 		case 'waveforms':
 			return waveforms as T;
+		case 'self_updates':
+			return false as T;
 		case 'set_setting': {
 			const d = snapshot.devices[0];
 			d.settings[args!.name as string] = args!.value as string;

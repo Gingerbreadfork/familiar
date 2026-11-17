@@ -42,7 +42,9 @@
 			</div>
 		{/if}
 
-		<button class={['about', app.about && 'on']} onclick={() => (app.about = !app.about)}>About</button>
+		<button class={['about', app.about && 'on', app.update && 'news']} onclick={() => (app.about = !app.about)}>
+			{app.update ? 'Update ready' : 'About'}
+		</button>
 	</header>
 
 	<main class={['bench', !reachable && 'resting']}>
@@ -244,6 +246,23 @@
 		color: var(--ink);
 		background: var(--surface);
 		box-shadow: var(--press);
+	}
+
+	/* The status light marks news, the way it marks a connected mouse. */
+	.about.news {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.4rem;
+		color: var(--ink);
+	}
+
+	.about.news::before {
+		content: '';
+		width: 7px;
+		height: 7px;
+		border-radius: 50%;
+		background: var(--led);
+		box-shadow: 0 0 6px var(--led-glow);
 	}
 
 	.bench {

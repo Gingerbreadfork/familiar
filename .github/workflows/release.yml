@@ -66,23 +66,41 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev libsoup-3.0-dev libjavascriptcoregtk-4.1-dev libudev-dev
-      - run: packaging/build-packages.sh
-      - name: Checksums
+      - name: Build the packages
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: packaging/build-packages.sh
+      - name: Checksums and update feed
         run: |
           cd gui/src-tauri/target/release/bundle
           sha256sum rpm/*.rpm deb/*.deb | sed 's# [a-z]*/# #' > SHA256SUMS
+          # Only a signed build has the feed. A run started by hand has no tag.
+          if ls deb/*.sig rpm/*.sig >/dev/null 2>&1; then
+            tag=$GITHUB_REF_NAME
+            [ "$GITHUB_REF_TYPE" = tag ] || tag="v$(node -p "require('$GITHUB_WORKSPACE/gui/package.json').version")"
+            "$GITHUB_WORKSPACE/scripts/latest-json.sh" "$tag" deb rpm > latest.json
+            cat latest.json
+          else
+            echo "No signatures: installed copies will not be offered this release"
+          fi
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: packages
           if-no-files-found: error
           path: |
             gui/src-tauri/target/release/bundle/deb/*.deb
+            gui/src-tauri/target/release/bundle/deb/*.sig
             gui/src-tauri/target/release/bundle/rpm/*.rpm
+            gui/src-tauri/target/release/bundle/rpm/*.sig
             gui/src-tauri/target/release/bundle/SHA256SUMS
+            gui/src-tauri/target/release/bundle/latest.json
       - name: Attach to release
         if: github.ref_type == 'tag'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           cd gui/src-tauri/target/release/bundle
-          bash "$GITHUB_WORKSPACE/scripts/attach-to-release.sh" SHA256SUMS rpm/*.rpm deb/*.deb
+          files=(rpm/*.rpm deb/*.deb)
+          if [ -f latest.json ]; then files+=(rpm/*.sig deb/*.sig latest.json); fi
+          bash "$GITHUB_WORKSPACE/scripts/attach-to-release.sh" SHA256SUMS "${files[@]}"

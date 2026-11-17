@@ -23,6 +23,8 @@ zbus = { version = "6", default-features = false, features = ["tokio", "proxy"] 
 familiar-client = { path = "../../crates/familiar-client" }
 familiar-core = { path = "../../crates/familiar-core" }
 hidpp = { package = "familiar-hidpp", path = "../../crates/familiar-hidpp" }
+tauri-plugin-updater = "2"
+tauri-plugin-process = "2"
 
 [profile.release]
 lto = true

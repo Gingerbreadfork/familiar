@@ -1,7 +1,13 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "The main window may listen for daemon changes.",
-  "windows": ["main"],
-  "permissions": ["core:default"]
+  "description": "The main window may listen for daemon changes, look for a newer release and restart itself after installing one.",
+  "windows": [
+    "main"
+  ],
+  "permissions": [
+    "core:default",
+    "updater:default",
+    "process:allow-restart"
+  ]
 }

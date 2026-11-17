@@ -1,6 +1,7 @@
 import { NORMALLY, part, summarize, type ButtonId, type PartId } from './actions';
 import { api, onDaemonChange } from './api';
 import type { ConfigView, Hosts, Snapshot } from './types';
+import { appVersion, checkForUpdate, relaunch, type UpdateHandle } from './updates';
 
 const THUMB_MODES: Record<string, string> = {
 	hscroll: 'Scrolls sideways at its own speed',
@@ -11,6 +12,10 @@ const THUMB_MODES: Record<string, string> = {
 };
 
 const CHARGING = new Set(['recharging', 'almost-full', 'slow-recharge']);
+
+const UPDATE_EVERY = 6 * 60 * 60 * 1000;
+/** Where the choice to look for updates is kept, in this window's own storage. */
+const CHECK_UPDATES = 'familiar.check-updates';
 
 /** Everything the window shows, kept in step with the daemon. */
 class AppState {
@@ -33,11 +38,25 @@ class AppState {
 	/** Bumped when a control's behaviour is saved, so the plate can acknowledge it. */
 	pulse = $state<{ control: string; n: number }>({ control: '', n: 0 });
 
+	/** The version of this window. */
+	version = $state('');
+	/** Whether this copy can replace itself, which the .deb and .rpm packages can. */
+	selfUpdates = $state(false);
+	/** Whether to look for a newer release at launch and every few hours. */
+	checkUpdates = $state(true);
+	/** A newer release, until it is installed. */
+	update = $state.raw<UpdateHandle | null>(null);
+	/** Download progress from 0 to 1 while an update installs. */
+	updateProgress = $state<number | null>(null);
+	/** What a check asked for by hand found, or why an update failed. */
+	updateNote = $state<{ text: string; bad: boolean } | null>(null);
+
 	device = $derived(this.snapshot?.devices.find((d) => d.online) ?? this.snapshot?.devices[0] ?? null);
 	ready = $derived(this.device?.online ?? false);
 	charging = $derived(CHARGING.has(this.device?.batteryStatus ?? ''));
 
 	#timer: ReturnType<typeof setTimeout> | undefined;
+	#updateTimer: ReturnType<typeof setInterval> | undefined;
 	/** Lets a refresh that started before a change drop its stale answer. */
 	#seq = 0;
 
@@ -67,8 +86,72 @@ class AppState {
 
 	async start() {
 		api.waveforms().then((w) => (this.waveforms = w));
+		this.startUpdates();
 		await this.refresh();
 		await onDaemonChange(() => this.soon());
+	}
+
+	async startUpdates() {
+		try {
+			this.checkUpdates = localStorage.getItem(CHECK_UPDATES) !== 'off';
+		} catch {
+			// Storage can be unavailable; the default stands.
+		}
+		try {
+			this.version = await appVersion();
+			this.selfUpdates = await api.selfUpdates();
+		} catch {
+			this.selfUpdates = false;
+		}
+		this.scheduleUpdateChecks();
+	}
+
+	setCheckUpdates(on: boolean) {
+		this.checkUpdates = on;
+		try {
+			localStorage.setItem(CHECK_UPDATES, on ? 'on' : 'off');
+		} catch {
+			// The choice then lasts until the window closes.
+		}
+		this.scheduleUpdateChecks();
+	}
+
+	/** Checks for a newer release now and every few hours, while the choice is on. */
+	scheduleUpdateChecks() {
+		clearInterval(this.#updateTimer);
+		this.#updateTimer = undefined;
+		if (!this.selfUpdates || !this.checkUpdates) return;
+		void this.checkForUpdate();
+		this.#updateTimer = setInterval(() => void this.checkForUpdate(), UPDATE_EVERY);
+	}
+
+	/** Looks for a newer release. Only a check asked for by hand reports what it found. */
+	async checkForUpdate(byHand = false) {
+		if (!this.selfUpdates || this.updateProgress !== null) return;
+		try {
+			this.update = await checkForUpdate();
+			if (byHand) this.updateNote = this.update ? null : { text: 'Familiar is up to date.', bad: false };
+		} catch (e) {
+			if (byHand) this.updateNote = { text: `Could not check for updates: ${e}`, bad: true };
+		}
+	}
+
+	/** Downloads and installs the release found, restarts the daemon, then this window. */
+	async installUpdate() {
+		const update = this.update;
+		if (!update || this.updateProgress !== null) return;
+		this.updateProgress = 0;
+		this.updateNote = null;
+		try {
+			await update.install((fraction) => (this.updateProgress = fraction));
+			// The new daemon takes over at the next login if this does not work.
+			await api.restartDaemon().catch(() => {});
+			await relaunch();
+		} catch (e) {
+			this.updateNote = { text: `The update could not be installed: ${e}`, bad: true };
+		} finally {
+			this.updateProgress = null;
+		}
 	}
 
 	async loadHosts() {

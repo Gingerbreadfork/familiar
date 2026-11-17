@@ -24,6 +24,15 @@
       "csp": "default-src 'self'; object-src 'none'; base-uri 'none'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src ipc: http://ipc.localhost"
     }
   },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDg0NTk2NUMwNTgyOUE0MUYKUldRZnBDbFl3R1ZaaEhsaFA2RS9Ha1BVVTlNOWVGNkhTWmNlcUYwbjhpODc2R2dSZUpZZTBMU08K",
+      "endpoints": [
+        "https://github.com/Gingerbreadfork/familiar/releases/latest/download/latest.json"
+      ],
+      "requireSignedVersion": true
+    }
+  },
   "bundle": {
     "active": true,
     "targets": [

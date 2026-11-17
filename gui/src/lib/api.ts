@@ -25,7 +25,9 @@ export const api = {
 	setScroll: (smooth: boolean, speed: number) => call<void>('set_scroll', { smooth, speed }),
 	setThumb: (thumb: ThumbView | null) => call<void>('set_thumb', { thumb }),
 	checkAction: (action: string) => call<string>('check_action', { action }),
-	waveforms: () => call<string[]>('waveforms')
+	waveforms: () => call<string[]>('waveforms'),
+	selfUpdates: () => call<boolean>('self_updates'),
+	restartDaemon: () => call<void>('restart_daemon')
 };
 
 /** Calls `onChange` whenever the daemon reports a change. Returns a function that stops listening. */

@@ -2,6 +2,7 @@
 //!
 //! Device settings go through the daemon's D-Bus API. Buttons and wheel
 //! behaviour are written to the config file, which the daemon then reloads.
+//! A copy installed from a package can also replace itself with a newer one.
 
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
@@ -14,6 +15,7 @@ use familiar_core::config::{self, Config};
 use familiar_core::scroll::{Scroll, ThumbMode, ThumbWheel};
 use futures_util::StreamExt;
 use serde::{Deserialize, Serialize};
+use tauri::utils::config::BundleType;
 use tauri::{Emitter, Manager, State};
 use tokio::sync::OnceCell;
 use zbus::Connection;
@@ -320,6 +322,32 @@ fn waveforms() -> Vec<String> {
     hidpp::features::haptic::Waveform::ALL.iter().map(|w| w.name().to_string()).collect()
 }
 
+/// Whether this copy came from a package the updater can replace. One built
+/// from source is updated by building it again.
+fn self_updating() -> bool {
+    matches!(tauri::utils::platform::bundle_type(), Some(BundleType::Deb | BundleType::Rpm))
+}
+
+#[tauri::command]
+fn self_updates() -> bool {
+    self_updating()
+}
+
+/// Restarts the daemon if it is running, so the one just installed takes over.
+#[tauri::command]
+async fn restart_daemon() -> Result<()> {
+    blocking(|| {
+        for args in [&["--user", "daemon-reload"][..], &["--user", "try-restart", "familiard.service"]] {
+            let status = std::process::Command::new("systemctl").args(args).status().map_err(err)?;
+            if !status.success() {
+                return Err(format!("systemctl {} failed: {status}", args.join(" ")));
+            }
+        }
+        Ok(())
+    })
+    .await
+}
+
 /// Tells the page whenever the daemon publishes a change, or starts or stops.
 /// If the bus is not reachable yet, or the stream ends, it tries again.
 async fn forward_changes(app: tauri::AppHandle) {
@@ -338,8 +366,11 @@ async fn forward_changes(app: tauri::AppHandle) {
 }
 
 fn main() {
-    tauri::Builder::default()
-        .manage(App::default())
+    let mut builder = tauri::Builder::default().manage(App::default()).plugin(tauri_plugin_process::init());
+    if self_updating() {
+        builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
+    }
+    builder
         .setup(|app| {
             tauri::async_runtime::spawn(forward_changes(app.handle().clone()));
             Ok(())
@@ -357,7 +388,9 @@ fn main() {
             set_scroll,
             set_thumb,
             check_action,
-            waveforms
+            waveforms,
+            self_updates,
+            restart_daemon
         ])
         .run(tauri::generate_context!())
         .expect("the app window could not start");

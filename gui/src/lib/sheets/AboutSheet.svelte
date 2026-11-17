@@ -1,5 +1,6 @@
 <script lang="ts">
 	import Sheet from './Sheet.svelte';
+	import Switch from '../ui/Switch.svelte';
 	import { api } from '../api';
 	import { app } from '../state.svelte';
 
@@ -14,7 +15,7 @@
 
 <Sheet
 	title="Familiar"
-	where="Looks after your mouse in the background. Settings live in a plain text file, nothing leaves this computer, and the mouse keeps working if Familiar stops."
+	where="Looks after your mouse in the background. Settings live in a plain text file on this computer, and the mouse keeps working if Familiar stops."
 >
 	{#if app.snapshot}
 		<dl class="group">
@@ -41,6 +42,45 @@
 		<div>
 			<button class="cap" onclick={() => app.attempt(() => api.reload())}>Apply the settings file again</button>
 		</div>
+	{/if}
+
+	{#if app.selfUpdates}
+		<section class="group">
+			<h2 class="section-title">Updates</h2>
+			<Switch
+				label="Look for updates"
+				hint="Asks GitHub for the newest release when this window opens, and every few hours while it stays open."
+				checked={app.checkUpdates}
+				onchange={(on) => app.setCheckUpdates(on)}
+			/>
+			{#if app.update}
+				<p>
+					Familiar {app.update.version} is ready. Installing it asks for your password, since it goes through the
+					package manager, then restarts Familiar.
+				</p>
+				<div>
+					<button class="cap" disabled={app.updateProgress !== null} onclick={() => app.installUpdate()}>
+						{#if app.updateProgress === null}
+							Install {app.update.version}
+						{:else if app.updateProgress < 1}
+							Downloading, {Math.round(app.updateProgress * 100)}%
+						{:else}
+							Installing
+						{/if}
+					</button>
+				</div>
+			{:else}
+				<div>
+					<button class="cap" onclick={() => app.checkForUpdate(true)}>Check now</button>
+				</div>
+			{/if}
+			{#if app.updateNote}
+				<p class={app.updateNote.bad ? 'warn' : 'quiet'} role="status">{app.updateNote.text}</p>
+			{/if}
+			<p class="small">
+				This is Familiar {app.version}. Each update is signed, and the signature is checked before it is installed.
+			</p>
+		</section>
 	{/if}
 
 	<section class="group">

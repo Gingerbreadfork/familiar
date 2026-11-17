@@ -37,8 +37,8 @@ built-in way to change any of it.
 
 Familiar sets all of that up. A small daemon talks to the mouse over HID++,
 and a settings window and a command line tool tell it what you want. Settings
-live in one plain text file, nothing leaves your computer, and the mouse
-keeps working if the daemon stops.
+live in one plain text file on your computer, and the mouse keeps working if
+the daemon stops.
 
 ## What it does
 
@@ -108,8 +108,10 @@ Measured on an MX Master 4 over Bolt:
 - After a reconnect, configured settings are back in about 50 ms when the
   mouse kept them and about 130 ms when three had reset. `familiar status`
   shows the latest figure.
-- No network: the systemd unit allows only Unix and netlink sockets. Check
-  with `systemctl --user show familiard -p RestrictAddressFamilies`.
+- No network for the daemon: the systemd unit allows only Unix and netlink
+  sockets. Check with `systemctl --user show familiard -p RestrictAddressFamilies`.
+- The only thing that uses the network is the window, to ask GitHub whether a
+  newer release exists. That can be switched off under About.
 
 ## What it cannot do yet
 
@@ -140,6 +142,11 @@ The daemon starts by itself from your next login. To start it straight away:
 systemctl --user start familiard
 ```
 
+After that Familiar keeps itself up to date. The window looks for a newer
+release when it opens and offers to install it under About. Every package is
+signed and the signature is checked before anything is installed; installing
+asks for your password, since it goes through the package manager.
+
 ### From source
 
 Access to `/dev/hidraw*` is needed. Installing the udev rule once is the only
@@ -166,8 +173,9 @@ packaging/install-user.sh --app
 ```
 
 The window is a client of the daemon only: closing it changes nothing, and
-every change it makes lands in the same config file. To build the `.deb` and
-`.rpm` packages instead, run `packaging/build-packages.sh`.
+every change it makes lands in the same config file. A copy built this way
+does not update itself. To build the `.deb` and `.rpm` packages instead, run
+`packaging/build-packages.sh`.
 
 The daemon runs under a systemd watchdog: if it ever stops responding,
 systemd restarts it. The service starts with `graphical-session.target`.
@@ -262,6 +270,15 @@ their checksums. The tag has to match the version in `Cargo.toml`,
 `gui/package.json`; `scripts/check-version.sh` tells you whether all four
 agree. Starting the workflow by hand builds the packages and keeps them with
 the run, without releasing anything.
+
+The workflow signs the packages for the updater when the repository has a
+`TAURI_SIGNING_PRIVATE_KEY` secret, and then publishes `latest.json`, the feed
+installed copies read. `pnpm --dir gui tauri signer generate -w
+~/.config/familiar/updater.key` makes a key; its public half lives in
+`gui/src-tauri/tauri.conf.json`, so a new key means installed copies have to
+be updated by hand once. `gh secret set TAURI_SIGNING_PRIVATE_KEY <
+~/.config/familiar/updater.key` stores it. Without the secret the packages
+still build, but installed copies are not offered that release.
 
 ### Layout
 
