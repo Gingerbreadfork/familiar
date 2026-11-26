@@ -637,7 +637,12 @@ impl Worker {
         match r {
             Ok(v) => Ok(v),
             Err(e) => {
-                if matches!(&e, Error::Timeout) || matches!(&e, Error::Register(r) if r.is_unreachable()) {
+                let unreachable = matches!(&e, Error::Register(r) if r.is_unreachable());
+                // One reply can get lost while the mouse is awake, so only a
+                // device that also misses a ping is taken to be away.
+                let silent =
+                    matches!(&e, Error::Timeout) && self.slots.get(&index).is_some_and(|s| s.device.ping().is_err());
+                if unreachable || silent {
                     self.offline(index);
                 }
                 Err(e.to_string())
@@ -907,15 +912,32 @@ mod tests {
     #[derive(Clone, Default)]
     struct Cable {
         unplugged: Arc<AtomicBool>,
+        /// Set to make the next write never arrive.
+        lose: Arc<AtomicBool>,
     }
 
     impl Cable {
         fn unplug(&self) {
             self.unplugged.store(true, Ordering::SeqCst);
         }
+
+        fn lose_next_write(&self) {
+            self.lose.store(true, Ordering::SeqCst);
+        }
     }
 
     struct Cabled<T>(T, Cable);
+
+    struct CabledWriter(Box<dyn hidpp::Writer>, Cable);
+
+    impl hidpp::Writer for CabledWriter {
+        fn write(&mut self, report: &[u8]) -> std::io::Result<()> {
+            if self.1.lose.swap(false, Ordering::SeqCst) {
+                return Ok(());
+            }
+            self.0.write(report)
+        }
+    }
 
     impl<T: Transport> Transport for Cabled<T> {
         fn read(&mut self, buf: &mut [u8], timeout: Duration) -> std::io::Result<Option<usize>> {
@@ -931,12 +953,44 @@ mod tests {
         }
 
         fn writer(&self) -> std::io::Result<Box<dyn hidpp::Writer>> {
-            self.0.writer()
+            Ok(Box::new(CabledWriter(self.0.writer()?, self.1.clone())))
         }
 
         fn waker(&self) -> Option<Arc<dyn hidpp::Wake>> {
             None
         }
+    }
+
+    #[tokio::test]
+    async fn one_lost_reply_does_not_take_the_mouse_offline() {
+        let (sim, transport) = Sim::receiver(2);
+        let cable = Cable::default();
+        let (utx, mut urx) = unbounded_channel();
+        let h =
+            spawn_with(Box::new(Cabled(transport, cable.clone())), "/dev/sim".into(), true, config(1600), utx, None)
+                .unwrap();
+        let set = |dpi: u16| {
+            let (reply, rx) = oneshot::channel();
+            h.send(Command::Set { index: 2, settings: DeviceSettings { dpi: Some(dpi), ..Default::default() }, reply });
+            rx
+        };
+        // An answered command shows the worker has finished looking at the other slots.
+        set(1600).await.unwrap().unwrap();
+
+        cable.lose_next_write();
+        h.send(Command::Device { index: 2, action: DeviceAction::Dpi(3200) });
+        set(1200).await.unwrap().expect("the mouse is still there");
+        assert_eq!(sim.state().dpi, 1200);
+
+        sim.disconnect();
+        loop {
+            match next(&mut urx).await {
+                Update::Offline { index: 2, .. } => break,
+                Update::Online { .. } | Update::Battery { .. } | Update::Settings { .. } => {}
+                other => panic!("expected offline, got {other:?}"),
+            }
+        }
+        tokio::task::spawn_blocking(move || h.stop()).await.unwrap();
     }
 
     mod buttons {
