@@ -12,9 +12,11 @@
 		onchange: (action: string) => void;
 		/** Offer holding a shortcut for as long as the button is down, as well as pressing it once. */
 		holdable?: boolean;
+		/** Shown until an action is chosen, where "Nothing" is a choice to make and not the starting point. */
+		placeholder?: string;
 	}
 
-	let { value, label, onchange, holdable = false }: Props = $props();
+	let { value, label, onchange, holdable = false, placeholder }: Props = $props();
 
 	const id = $props.id();
 	// The string alone, so a refresh that leaves it unchanged keeps local edits.
@@ -23,6 +25,8 @@
 	let kind = $derived(split(current).kind);
 	let arg = $derived(split(current).value);
 	let once = $derived(current?.startsWith('press:') ?? false);
+	/** True while the placeholder stands in for a choice not yet made. */
+	let unset = $derived(placeholder !== undefined && current === null);
 	/** True just after choosing a keyboard shortcut, so the keys can be pressed straight away. */
 	let fresh = $state(false);
 
@@ -55,6 +59,7 @@
 	}
 
 	function pickKind(k: Kind) {
+		unset = false;
 		kind = k;
 		arg = DEFAULTS[k] ?? '';
 		fresh = k === 'key';
@@ -64,7 +69,10 @@
 
 <div class="picker">
 	<label class="sr" id={`${id}-label`} for={id}>{label}</label>
-	<select {id} value={kind} onchange={(e) => pickKind(e.currentTarget.value as Kind)}>
+	<select {id} value={unset ? '' : kind} onchange={(e) => pickKind(e.currentTarget.value as Kind)}>
+		{#if unset}
+			<option value="" disabled hidden>{placeholder}</option>
+		{/if}
 		{#each KINDS as k (k.id)}
 			<option value={k.id}>{k.label}</option>
 		{/each}

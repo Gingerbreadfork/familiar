@@ -80,6 +80,7 @@
 	<div class="edit">
 		<ActionPicker
 			label="Action"
+			placeholder="Choose an action"
 			holdable
 			value={binding?.kind === 'direct' ? binding.action : null}
 			onchange={(action) => save({ kind: 'direct', action })}
@@ -89,6 +90,7 @@
 	<div class="edit">
 		<ActionPicker
 			label="Action to hold"
+			placeholder="Choose an action"
 			value={gestures.toggle ?? null}
 			onchange={(action) => save({ kind: 'gestures', gestures: { toggle: action } })}
 		/>
