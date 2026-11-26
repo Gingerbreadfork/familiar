@@ -240,7 +240,7 @@ dependencies = [
 
 [[package]]
 name = "familiar-cli"
-version = "0.1.2"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -258,7 +258,7 @@ dependencies = [
 
 [[package]]
 name = "familiar-client"
-version = "0.1.2"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "familiar-core",
@@ -269,7 +269,7 @@ dependencies = [
 
 [[package]]
 name = "familiar-core"
-version = "0.1.2"
+version = "0.2.0"
 dependencies = [
  "familiar-hidpp",
  "serde",
@@ -280,7 +280,7 @@ dependencies = [
 
 [[package]]
 name = "familiar-hidpp"
-version = "0.1.2"
+version = "0.2.0"
 dependencies = [
  "serde",
  "thiserror",
@@ -288,7 +288,7 @@ dependencies = [
 
 [[package]]
 name = "familiar-hidraw"
-version = "0.1.2"
+version = "0.2.0"
 dependencies = [
  "familiar-hidpp",
  "libc",
@@ -296,7 +296,7 @@ dependencies = [
 
 [[package]]
 name = "familiard"
-version = "0.1.2"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "evdev",
