@@ -64,7 +64,7 @@ impl Scroll {
     }
 
     pub fn speed(&self) -> f32 {
-        self.speed.unwrap_or(1.0).clamp(0.1, 10.0)
+        clamp_speed(self.speed)
     }
 }
 
@@ -86,8 +86,13 @@ impl ThumbWheel {
     }
 
     pub fn speed(&self) -> f32 {
-        self.speed.unwrap_or(1.0).clamp(0.1, 10.0)
+        clamp_speed(self.speed)
     }
+}
+
+/// The speed to use: 1 when unset or not a number, kept between 0.1 and 10.
+fn clamp_speed(speed: Option<f32>) -> f32 {
+    speed.filter(|s| !s.is_nan()).unwrap_or(1.0).clamp(0.1, 10.0)
 }
 
 /// Resolved wheel behaviour for one profile.
@@ -96,4 +101,20 @@ pub struct Wheels {
     pub scroll: Scroll,
     /// `None` leaves the thumb wheel to the system.
     pub thumb: Option<ThumbWheel>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn speed_stays_a_usable_number() {
+        let speed = |text: &str| toml::from_str::<Scroll>(text).unwrap().speed();
+        assert_eq!(speed(""), 1.0);
+        assert_eq!(speed("speed = 2.5"), 2.5);
+        assert_eq!(speed("speed = 0"), 0.1);
+        assert_eq!(speed("speed = inf"), 10.0);
+        assert_eq!(speed("speed = nan"), 1.0);
+        assert_eq!(toml::from_str::<ThumbWheel>("speed = nan").unwrap().speed(), 1.0);
+    }
 }
