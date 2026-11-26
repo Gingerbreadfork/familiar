@@ -1,6 +1,7 @@
 //! Live event viewer with optional temporary diversion.
 
 use std::collections::HashMap;
+use std::io::Write;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{Receiver, RecvTimeoutError};
@@ -177,6 +178,12 @@ pub fn run(dev: &mut Device, events: Receiver<Incoming>, opts: Options) -> Resul
         ctrlc::set_handler(move || stop.store(true, Ordering::SeqCst)).context("installing signal handler")?;
     }
 
+    // A reader that stops, like `head`, must end the loop and not the
+    // process, or the controls would stay diverted.
+    // SAFETY: changing a signal's disposition installs no handler.
+    unsafe { libc::signal(libc::SIGPIPE, libc::SIG_IGN) };
+    let mut out = std::io::stdout().lock();
+
     let mut restore = Restore::default();
     let me = dev.index();
     let result = apply(dev, &opts, &mut restore).and_then(|()| {
@@ -194,16 +201,16 @@ pub fn run(dev: &mut Device, events: Receiver<Incoming>, opts: Options) -> Resul
                 continue;
             }
             let feature = by_index.get(&p.sub_id).copied().filter(|_| p.sub_id < 0x80);
-            if opts.json {
-                println!("{}", to_json(feature, &p));
-                continue;
-            }
-            match by_index.get(&p.sub_id) {
-                Some(&id) if p.sub_id < 0x80 => {
+            let line = match feature {
+                _ if opts.json => to_json(feature, &p).to_string(),
+                Some(id) => {
                     let name = policy::name(id).unwrap_or("unknown");
-                    println!("{:04X} {:<22} ev{} {:<40} {:?}", id, name, p.function(), describe(id, &p), p);
+                    format!("{:04X} {:<22} ev{} {:<40} {:?}", id, name, p.function(), describe(id, &p), p)
                 }
-                _ => println!("notification {:?}", p),
+                None => format!("notification {p:?}"),
+            };
+            if writeln!(out, "{line}").is_err() {
+                break;
             }
         }
         Ok(())
