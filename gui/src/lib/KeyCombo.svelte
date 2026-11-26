@@ -97,7 +97,11 @@
 		}
 		const k = keyName(e.code);
 		unsendable = !k;
-		if (!k) return;
+		if (!k) {
+			// Letting go of a modifier now must not save it on its own.
+			down = [];
+			return;
+		}
 		// Modifiers pressed with the key replace the switches; a key on its own keeps them.
 		const held = [...new Set([...down, ...eventModifiers(e)])];
 		if (held.length) mods = held;
