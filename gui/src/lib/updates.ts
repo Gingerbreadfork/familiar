@@ -2,6 +2,10 @@
 
 import { inApp } from './api';
 
+/** How long the feed may take to answer, and the package to arrive, in milliseconds. */
+const CHECK_TIMEOUT = 30_000;
+const DOWNLOAD_TIMEOUT = 15 * 60_000;
+
 export interface UpdateHandle {
 	version: string;
 	/** Downloads and installs it, reporting download progress from 0 to 1. */
@@ -12,23 +16,26 @@ export interface UpdateHandle {
 export async function checkForUpdate(): Promise<UpdateHandle | null> {
 	if (!inApp) return null;
 	const { check } = await import('@tauri-apps/plugin-updater');
-	const update = await check();
+	const update = await check({ timeout: CHECK_TIMEOUT });
 	if (!update) return null;
 	return {
 		version: update.version,
 		async install(onProgress) {
 			let total = 0;
 			let got = 0;
-			await update.downloadAndInstall((event) => {
-				if (event.event === 'Started') {
-					total = event.data.contentLength ?? 0;
-				} else if (event.event === 'Progress') {
-					got += event.data.chunkLength;
-					if (total > 0) onProgress(Math.min(1, got / total));
-				} else if (event.event === 'Finished') {
-					onProgress(1);
-				}
-			});
+			await update.downloadAndInstall(
+				(event) => {
+					if (event.event === 'Started') {
+						total = event.data.contentLength ?? 0;
+					} else if (event.event === 'Progress') {
+						got += event.data.chunkLength;
+						if (total > 0) onProgress(Math.min(1, got / total));
+					} else if (event.event === 'Finished') {
+						onProgress(1);
+					}
+				},
+				{ timeout: DOWNLOAD_TIMEOUT }
+			);
 		}
 	};
 }
