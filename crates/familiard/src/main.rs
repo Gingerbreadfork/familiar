@@ -95,6 +95,8 @@ async fn main() -> Result<()> {
 
     let mut term = signal(SignalKind::terminate())?;
     let mut int = signal(SignalKind::interrupt())?;
+    // Sent when the terminal the daemon was started from closes.
+    let mut hup = signal(SignalKind::hangup())?;
     // Pinged from this loop, so a stuck manager stops the pings and systemd restarts us.
     let watchdog = systemd::watchdog_interval();
     let mut ping = tokio::time::interval(watchdog.unwrap_or(Duration::from_secs(3600)));
@@ -104,6 +106,7 @@ async fn main() -> Result<()> {
             _ = ping.tick(), if watchdog.is_some() => systemd::notify("WATCHDOG=1"),
             _ = term.recv() => break,
             _ = int.recv() => break,
+            _ = hup.recv() => break,
         }
     }
     systemd::notify("STOPPING=1");
