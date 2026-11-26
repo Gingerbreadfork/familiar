@@ -61,14 +61,21 @@ class AppState {
 	#seq = 0;
 	/** Changes to the settings file that are still being saved. */
 	#writes = 0;
+	/** The error the last refresh put in `problem`, so the next good one can clear it. */
+	#refreshProblem: string | null = null;
 
 	async refresh() {
 		const n = ++this.#seq;
 		const [snapshot, config] = await Promise.allSettled([api.snapshot(), api.config()]);
 		if (n !== this.#seq) return;
 		const reachable = this.ready ? this.device?.path : null;
-		if (snapshot.status === 'fulfilled') this.snapshot = snapshot.value;
-		else this.problem = String(snapshot.reason);
+		if (snapshot.status === 'fulfilled') {
+			this.snapshot = snapshot.value;
+			if (this.#refreshProblem !== null && this.problem === this.#refreshProblem) this.problem = null;
+			this.#refreshProblem = null;
+		} else {
+			this.problem = this.#refreshProblem = String(snapshot.reason);
+		}
 		// The computers may have changed while the mouse was away.
 		if (this.ready && this.device?.path !== reachable) this.loadHosts();
 		if (config.status === 'fulfilled') {
