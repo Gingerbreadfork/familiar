@@ -3,7 +3,6 @@
 	import Sheet from './Sheet.svelte';
 	import Scale from '../ui/Scale.svelte';
 	import Switch from '../ui/Switch.svelte';
-	import { api } from '../api';
 	import { app } from '../state.svelte';
 	import type { ThumbView } from '../types';
 
@@ -20,7 +19,7 @@
 	];
 
 	function save(next: ThumbView | null) {
-		return app.attempt(() => api.setThumb(next), 'thumb-wheel');
+		return app.setThumb(next);
 	}
 
 	function pickMode(mode: string) {

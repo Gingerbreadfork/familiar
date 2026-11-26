@@ -9,7 +9,6 @@
 	import Rocker from '../ui/Rocker.svelte';
 	import Scale from '../ui/Scale.svelte';
 	import Switch from '../ui/Switch.svelte';
-	import { api } from '../api';
 	import { app } from '../state.svelte';
 
 	let s = $derived(app.device?.settings ?? {});
@@ -69,7 +68,7 @@
 			label="Smooth scrolling"
 			hint="Pages glide in fine steps instead of jumping a line at a time."
 			checked={config?.smooth ?? false}
-			onchange={(on) => app.attempt(() => api.setScroll(on, config?.speed ?? 1), 'wheel')}
+			onchange={(on) => app.setScroll(on, config?.speed ?? 1)}
 		/>
 		{#if config?.smooth}
 			<Scale
@@ -79,7 +78,7 @@
 				step={0.1}
 				value={config.speed}
 				format={times}
-				oncommit={(n) => app.attempt(() => api.setScroll(true, n), 'wheel')}
+				oncommit={(n) => app.setScroll(true, n)}
 			/>
 		{/if}
 		<Switch

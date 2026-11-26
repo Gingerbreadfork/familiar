@@ -2,7 +2,6 @@
 	import ActionPicker from '../ActionPicker.svelte';
 	import Switch from '../ui/Switch.svelte';
 	import { DIAGONALS, GESTURES, NORMALLY, type ButtonId } from '../actions';
-	import { api } from '../api';
 	import { app } from '../state.svelte';
 	import type { BindingView } from '../types';
 
@@ -29,7 +28,7 @@
 	let diagonals = $derived(showDiagonals || DIAGONALS.some((d) => d.key in gestures));
 
 	function save(next: BindingView | null) {
-		app.attempt(() => api.setButton(button, next), part);
+		app.setButton(button, next, part);
 	}
 
 	function pickMode(m: Mode) {

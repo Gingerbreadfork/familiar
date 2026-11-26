@@ -1,6 +1,6 @@
 import { NORMALLY, part, summarize, type ButtonId, type PartId } from './actions';
 import { api, onDaemonChange } from './api';
-import type { ConfigView, Hosts, Snapshot } from './types';
+import type { BindingView, ConfigView, Hosts, Snapshot, ThumbView } from './types';
 import { appVersion, checkForUpdate, relaunch, type UpdateHandle } from './updates';
 
 const THUMB_MODES: Record<string, string> = {
@@ -59,6 +59,8 @@ class AppState {
 	#updateTimer: ReturnType<typeof setInterval> | undefined;
 	/** Lets a refresh that started before a change drop its stale answer. */
 	#seq = 0;
+	/** Changes to the settings file that are still being saved. */
+	#writes = 0;
 
 	async refresh() {
 		const n = ++this.#seq;
@@ -70,7 +72,8 @@ class AppState {
 		// The computers may have changed while the mouse was away.
 		if (this.ready && this.device?.path !== reachable) this.loadHosts();
 		if (config.status === 'fulfilled') {
-			this.config = config.value;
+			// A change still being saved is newer than the file was when it was read.
+			if (this.#writes === 0) this.config = config.value;
 			this.configProblem = null;
 		} else {
 			this.configProblem = String(config.reason);
@@ -218,6 +221,41 @@ class AppState {
 		} finally {
 			this.soon();
 		}
+	}
+
+	/**
+	 * Saves a change to the settings file. The window shows it at once, so the
+	 * next change builds on it, and the refresh that follows puts things right
+	 * if saving failed.
+	 */
+	async #write(change: (c: ConfigView) => ConfigView, work: () => Promise<unknown>, control: string) {
+		if (this.config) this.config = change(this.config);
+		this.#seq++;
+		this.#writes++;
+		try {
+			return await this.attempt(work, control);
+		} finally {
+			this.#writes--;
+		}
+	}
+
+	/** Sets what a button does, or with null gives it back to the mouse. */
+	setButton(button: ButtonId, binding: BindingView | null, control: string) {
+		const change = (c: ConfigView) => {
+			const buttons = { ...c.buttons };
+			if (binding) buttons[button] = binding;
+			else delete buttons[button];
+			return { ...c, buttons };
+		};
+		return this.#write(change, () => api.setButton(button, binding), control);
+	}
+
+	setScroll(smooth: boolean, speed: number) {
+		return this.#write((c) => ({ ...c, smooth, speed }), () => api.setScroll(smooth, speed), 'wheel');
+	}
+
+	setThumb(thumb: ThumbView | null) {
+		return this.#write((c) => ({ ...c, thumb }), () => api.setThumb(thumb), 'thumb-wheel');
 	}
 
 	setting(name: string, value: string, control?: string) {
