@@ -42,9 +42,11 @@ pub fn watch_hidraw(tx: UnboundedSender<Event>) -> std::io::Result<()> {
             for event in socket.iter() {
                 let Some(node) = event.devnode().map(Path::to_path_buf) else { continue };
                 let msg = match event.event_type() {
-                    udev::EventType::Add => match hidpp_hidraw::info(&node) {
+                    // A change is what `udevadm trigger` sends once the rule that
+                    // grants access is installed, so a node is tried again then.
+                    udev::EventType::Add | udev::EventType::Change => match hidpp_hidraw::info(&node) {
                         Some(info) if info.is_usable() => {
-                            debug!("hidraw added: {}", node.display());
+                            debug!("hidraw added or changed: {}", node.display());
                             Event::Added(info)
                         }
                         _ => continue,
