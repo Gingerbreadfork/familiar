@@ -253,7 +253,12 @@ pub fn spawn_with(
             input,
             routes,
         };
-        if catch_unwind(AssertUnwindSafe(|| w.run(rx))).is_err() {
+        let crashed = catch_unwind(AssertUnwindSafe(|| w.run(rx))).is_err();
+        // However the thread ended, nothing its devices held may stay down.
+        for &index in w.slots.keys() {
+            w.release_input(index);
+        }
+        if crashed {
             error!(endpoint = %gone.0.display(), "device thread crashed");
             let _ = gone.1.send(Update::Gone { endpoint: gone.0 });
         }
@@ -526,10 +531,15 @@ impl Worker {
         {
             slot.online = false;
             info!(index, "device went offline");
-            if let Some(input) = &self.input {
-                let _ = input.send(InputMsg::Offline { endpoint: self.endpoint.clone(), index });
-            }
+            self.release_input(index);
             let _ = self.updates.send(Update::Offline { endpoint: self.endpoint.clone(), index });
+        }
+    }
+
+    /// Has the input engine let go of everything this device holds down.
+    fn release_input(&self, index: u8) {
+        if let Some(input) = &self.input {
+            let _ = input.send(InputMsg::Offline { endpoint: self.endpoint.clone(), index });
         }
     }
 
@@ -714,6 +724,7 @@ impl Worker {
                     s.online = false;
                 }
                 self.forget_routes(index);
+                self.release_input(index);
             }
             Command::Resume { index } => {
                 // Identified afresh, so its routes and diversion are set up again.
@@ -735,6 +746,8 @@ impl Worker {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::atomic::{AtomicBool, Ordering};
+
     use super::*;
     use hidpp::sim::{DEFAULT_DPI, Sim};
     use tokio::sync::mpsc::{UnboundedReceiver, unbounded_channel};
@@ -890,6 +903,42 @@ mod tests {
         tokio::task::spawn_blocking(move || h.stop()).await.unwrap();
     }
 
+    /// What a test can do to the cable between the daemon and the simulated mouse.
+    #[derive(Clone, Default)]
+    struct Cable {
+        unplugged: Arc<AtomicBool>,
+    }
+
+    impl Cable {
+        fn unplug(&self) {
+            self.unplugged.store(true, Ordering::SeqCst);
+        }
+    }
+
+    struct Cabled<T>(T, Cable);
+
+    impl<T: Transport> Transport for Cabled<T> {
+        fn read(&mut self, buf: &mut [u8], timeout: Duration) -> std::io::Result<Option<usize>> {
+            if self.1.unplugged.load(Ordering::SeqCst) {
+                return Err(std::io::Error::other("unplugged"));
+            }
+            // Short reads, so being unplugged is noticed without a waker.
+            self.0.read(buf, timeout.min(Duration::from_millis(20)))
+        }
+
+        fn supports(&self, kind: hidpp::ReportKind) -> bool {
+            self.0.supports(kind)
+        }
+
+        fn writer(&self) -> std::io::Result<Box<dyn hidpp::Writer>> {
+            self.0.writer()
+        }
+
+        fn waker(&self) -> Option<Arc<dyn hidpp::Wake>> {
+            None
+        }
+    }
+
     mod buttons {
         use super::*;
         use crate::input::{self, InputMsg, key_code, testing::Recorder};
@@ -900,11 +949,14 @@ mod tests {
             input: input::Handle,
             keys: Recorder,
             updates: UnboundedReceiver<Update>,
+            cable: Cable,
         }
 
         async fn rig(config_text: &str) -> Rig {
             let config: Config = toml::from_str(config_text).unwrap();
             let (sim, transport) = Sim::receiver(2);
+            let cable = Cable::default();
+            let transport = Cabled(transport, cable.clone());
             let keys = Recorder::default();
             let input = input::spawn(Box::new(keys.clone())).unwrap();
             let (utx, mut updates) = unbounded_channel();
@@ -916,7 +968,7 @@ mod tests {
                     break;
                 }
             }
-            Rig { sim, worker, input, keys, updates }
+            Rig { sim, worker, input, keys, updates, cable }
         }
 
         impl Rig {
@@ -1052,6 +1104,21 @@ mod tests {
             assert_eq!(r.keys(1).await, vec![(k("KEY_LEFTSHIFT"), true)]);
             r.sim.disconnect();
             assert_eq!(&r.keys(2).await[1..], &[(k("KEY_LEFTSHIFT"), false)]);
+            r.stop().await;
+        }
+
+        #[tokio::test]
+        async fn held_keys_are_released_when_the_receiver_is_unplugged() {
+            let mut r =
+                rig("[profile.default.buttons]\nback = \"key:shift\"\nforward = { hold = \"key:f24\" }\n").await;
+            r.sim.press(0x0053);
+            assert_eq!(r.keys(1).await, vec![(k("KEY_LEFTSHIFT"), true)]);
+            r.sim.press(0x0056);
+            r.cable.unplug();
+            while !matches!(next(&mut r.updates).await, Update::Gone { .. }) {}
+            assert_eq!(&r.keys(2).await[1..], &[(k("KEY_LEFTSHIFT"), false)]);
+            tokio::time::sleep(Duration::from_millis(700)).await;
+            assert_eq!(r.keys.0.lock().unwrap().len(), 2, "a press cut short does not turn into a hold");
             r.stop().await;
         }
 
