@@ -62,7 +62,8 @@
 
 	function toggle(m: string) {
 		mods = mods.includes(m) ? mods.filter((x) => x !== m) : [...mods, m];
-		if (key) emit();
+		// A saved shortcut changes with its switches, also one made of modifiers alone.
+		if (key || parse(current).mods.length) emit();
 	}
 
 	function start(button: HTMLButtonElement) {
