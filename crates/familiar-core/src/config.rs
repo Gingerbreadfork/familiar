@@ -79,6 +79,7 @@ pub struct Match {
 #[derive(Deserialize)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 struct Fragment {
+    version: Option<u32>,
     #[serde(default)]
     device: BTreeMap<String, DeviceSettings>,
     #[serde(default)]
@@ -200,12 +201,7 @@ impl Config {
         let Some(text) = read(path)? else { return Ok(Config::default()) };
         let mut config: Config =
             toml::from_str(&text).map_err(|e| ConfigError::Parse { path: path.to_path_buf(), source: Box::new(e) })?;
-        if config.version > VERSION {
-            return Err(ConfigError::Shape {
-                path: path.to_path_buf(),
-                msg: format!("version {} is newer than this program understands ({VERSION})", config.version),
-            });
-        }
+        check_version(path, config.version)?;
         config.sources = config.device.keys().map(|k| (k.clone(), path.to_path_buf())).collect();
         let mut profile_sources = BTreeMap::new();
         note_profiles(&mut profile_sources, &config.profile, path);
@@ -216,6 +212,7 @@ impl Config {
             let Some(text) = read(&file)? else { continue };
             let frag: Fragment =
                 toml::from_str(&text).map_err(|e| ConfigError::Parse { path: file.clone(), source: Box::new(e) })?;
+            check_version(&file, frag.version.unwrap_or(VERSION))?;
             for (key, settings) in frag.device {
                 config.device.entry(key.clone()).or_default().merge_from(&settings);
                 config.sources.insert(key, file.clone());
@@ -361,6 +358,14 @@ impl Config {
 }
 
 type ReadResult = Result<Option<String>, ConfigError>;
+
+fn check_version(path: &Path, version: u32) -> Result<(), ConfigError> {
+    if version > VERSION {
+        let msg = format!("version {version} is newer than this program understands ({VERSION})");
+        return Err(shape(path, msg));
+    }
+    Ok(())
+}
 
 fn note_profiles(into: &mut BTreeMap<String, Vec<PathBuf>>, profiles: &BTreeMap<String, Profile>, file: &Path) {
     for (name, p) in profiles {
@@ -850,6 +855,11 @@ mod tests {
 
         fs::write(dir.join("hosts/laptop.toml"), "include = [\"x\"]\n").unwrap();
         assert!(Config::load_with_host(&main, "laptop").is_err());
+
+        fs::write(dir.join("hosts/laptop.toml"), "version = 1\n[device.\"B042\"]\ndpi = 1200\n").unwrap();
+        assert_eq!(Config::load_with_host(&main, "laptop").unwrap().settings_for(&mx4()).dpi, Some(1200));
+        fs::write(dir.join("hosts/laptop.toml"), "version = 2\n").unwrap();
+        assert!(matches!(Config::load_with_host(&main, "laptop"), Err(ConfigError::Shape { .. })));
         fs::remove_dir_all(&dir).unwrap();
     }
 
