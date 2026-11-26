@@ -237,15 +237,13 @@ fn mode_from(s: &str) -> Result<ThumbMode> {
     })
 }
 
-/// The config file the daemon reads, or the default one when it is not running.
-async fn config_path(app: &App) -> PathBuf {
-    if let Ok(d) = app.daemon().await
-        && let Ok(m) = d.manager().await
-        && let Ok(p) = m.config_path().await
-    {
-        return PathBuf::from(p);
-    }
-    Config::default_path()
+/// The config file the daemon reads, or the default one when it is not
+/// running. A running daemon that cannot be asked is an error, since its file
+/// may be another one.
+async fn config_path(app: &App) -> Result<PathBuf> {
+    let Ok(d) = app.daemon().await else { return Ok(Config::default_path()) };
+    let m = d.manager().await.map_err(err)?;
+    m.config_path().await.map(PathBuf::from).map_err(zerr)
 }
 
 /// Runs file work off the async threads.
@@ -255,7 +253,7 @@ async fn blocking<T: Send + 'static>(f: impl FnOnce() -> Result<T> + Send + 'sta
 
 #[tauri::command]
 async fn config(app: State<'_, App>) -> Result<ConfigView> {
-    let path = config_path(&app).await;
+    let path = config_path(&app).await?;
     let load = path.clone();
     let c = blocking(move || Config::load(&load).map_err(err)).await?;
     let buttons = c.buttons(PROFILE)?.iter().map(|(k, b)| (k.clone(), BindingView::from(b))).collect();
@@ -285,14 +283,14 @@ async fn apply(app: &App) -> Result<()> {
 #[tauri::command]
 async fn set_button(app: State<'_, App>, button: String, binding: Option<BindingView>) -> Result<()> {
     let binding = binding.map(Binding::try_from).transpose()?;
-    let path = config_path(&app).await;
+    let path = config_path(&app).await?;
     blocking(move || config::persist_button(&path, PROFILE, &button, binding.as_ref()).map_err(err)).await?;
     apply(&app).await
 }
 
 #[tauri::command]
 async fn set_scroll(app: State<'_, App>, smooth: bool, speed: f32) -> Result<()> {
-    let path = config_path(&app).await;
+    let path = config_path(&app).await?;
     let scroll = Scroll { smooth: Some(smooth), speed: Some(speed) };
     blocking(move || config::persist_scroll(&path, PROFILE, &scroll).map_err(err)).await?;
     apply(&app).await
@@ -306,7 +304,7 @@ async fn set_thumb(app: State<'_, App>, thumb: Option<ThumbView>) -> Result<()> 
             Ok(ThumbWheel { mode: Some(mode_from(&t.mode)?), speed: Some(t.speed), tap })
         })
         .transpose()?;
-    let path = config_path(&app).await;
+    let path = config_path(&app).await?;
     blocking(move || config::persist_thumb_wheel(&path, PROFILE, thumb.as_ref()).map_err(err)).await?;
     apply(&app).await
 }
