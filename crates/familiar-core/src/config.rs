@@ -612,11 +612,20 @@ fn shape(path: &Path, msg: String) -> ConfigError {
     ConfigError::Shape { path: path.to_path_buf(), msg }
 }
 
+/// The last included file that sets a button of `profile`.
+fn buttons_include(config: &Config, profile: &str) -> Option<PathBuf> {
+    let prefix = format!("{profile}.buttons.");
+    let sets =
+        |file: &PathBuf| config.profile_sources.iter().any(|(k, files)| k.starts_with(&prefix) && files.contains(file));
+    config.included.iter().rev().find(|f| sets(f)).cloned()
+}
+
 /// The file a profile entry should be written to, where its value takes
-/// effect, and every file that sets it now.
-fn profile_files(config: &Config, main: &Path, key: &str) -> (PathBuf, Vec<PathBuf>) {
+/// effect, and every file that sets it now. `fallback` is where an entry no
+/// file sets yet belongs, when that is not the main file.
+fn profile_files(config: &Config, main: &Path, key: &str, fallback: Option<PathBuf>) -> (PathBuf, Vec<PathBuf>) {
     let mut files = config.profile_sources.get(key).cloned().unwrap_or_default();
-    let target = files.last().cloned().unwrap_or_else(|| main.to_path_buf());
+    let target = files.last().cloned().or(fallback).unwrap_or_else(|| main.to_path_buf());
     if !files.contains(&target) {
         files.push(target.clone());
     }
@@ -624,11 +633,13 @@ fn profile_files(config: &Config, main: &Path, key: &str) -> (PathBuf, Vec<PathB
 }
 
 /// Sets one button in `[profile.<profile>.buttons]`, in the file where it
-/// takes effect. With `None` it is removed from every file that sets it.
+/// takes effect. A button no file sets yet goes in the last file that holds
+/// the profile's buttons. With `None` it is removed from every file that sets it.
 pub fn persist_button(path: &Path, profile: &str, button: &str, binding: Option<&Binding>) -> Result<(), ConfigError> {
     let host = hostname();
     let config = Config::load_with_host(path, &host)?;
-    let (target, files) = profile_files(&config, path, &format!("{profile}.buttons.{button}"));
+    let key = format!("{profile}.buttons.{button}");
+    let (target, files) = profile_files(&config, path, &key, buttons_include(&config, profile));
     let edits: Vec<(PathBuf, Edit)> = match binding {
         Some(b) => vec![(
             target,
@@ -662,7 +673,7 @@ pub fn persist_button(path: &Path, profile: &str, button: &str, binding: Option<
 pub fn persist_scroll(path: &Path, profile: &str, scroll: &Scroll) -> Result<(), ConfigError> {
     let host = hostname();
     let config = Config::load_with_host(path, &host)?;
-    let (target, files) = profile_files(&config, path, &format!("{profile}.scroll"));
+    let (target, files) = profile_files(&config, path, &format!("{profile}.scroll"), None);
     let edits = files.into_iter().map(|file| -> (PathBuf, Edit) {
         let here = file == target;
         let scroll = scroll.clone();
@@ -684,7 +695,7 @@ pub fn persist_scroll(path: &Path, profile: &str, scroll: &Scroll) -> Result<(),
 pub fn persist_thumb_wheel(path: &Path, profile: &str, thumb: Option<&ThumbWheel>) -> Result<(), ConfigError> {
     let host = hostname();
     let config = Config::load_with_host(path, &host)?;
-    let (target, files) = profile_files(&config, path, &format!("{profile}.thumb-wheel"));
+    let (target, files) = profile_files(&config, path, &format!("{profile}.thumb-wheel"), None);
     let Some(thumb) = thumb else {
         if let Some(parent) = config.inherited_from(profile, |p| p.thumb_wheel.is_some()) {
             let msg = format!("profile {profile:?} inherits its thumb wheel from {parent:?}; change it there");
@@ -1005,6 +1016,28 @@ wheel = \"none\"\n",
         assert!(Config::load(&main).unwrap().wheels("default").unwrap().scroll.smooth());
         let err = persist_button(&main, "default", "forward", None).unwrap_err();
         assert!(err.to_string().contains("inherits"), "{err}");
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn a_new_button_joins_the_file_that_holds_the_others() {
+        let dir = std::env::temp_dir().join(format!("familiar-new-button-{}", std::process::id()));
+        fs::create_dir_all(&dir).unwrap();
+        let main = dir.join("config.toml");
+        let first = dir.join("first.toml");
+        let second = dir.join("second.toml");
+        fs::write(&main, "include = [\"first.toml\", \"second.toml\"]\n").unwrap();
+        fs::write(&first, "[profile.default.buttons]\nback = \"key:alt+left\"\n").unwrap();
+        fs::write(&second, "[profile.other.buttons]\nback = \"none\"\n").unwrap();
+
+        let next: Binding = Binding::Direct("key:ctrl+w".parse().unwrap());
+        persist_button(&main, "default", "forward", Some(&next)).unwrap();
+        assert!(fs::read_to_string(&first).unwrap().contains("forward"));
+        assert!(!fs::read_to_string(&main).unwrap().contains("forward"));
+        assert!(!fs::read_to_string(&second).unwrap().contains("forward"));
+
+        persist_button(&main, "fresh", "forward", Some(&next)).unwrap();
+        assert!(fs::read_to_string(&main).unwrap().contains("[profile.fresh.buttons]"));
         fs::remove_dir_all(&dir).unwrap();
     }
 
