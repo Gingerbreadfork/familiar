@@ -339,6 +339,7 @@ impl Config {
         for (_, s) in matched {
             out.merge_from(s);
         }
+        out.keep_in_range();
         out
     }
 
@@ -804,6 +805,15 @@ mod tests {
         let s = c.settings_for(&mx4());
         assert_eq!((s.haptic, s.dpi, s.smartshift), (Some(60), Some(1600), Some(Shift::Off)));
         assert_eq!(c.section_for(&mx4()), "1a2b3c4d");
+    }
+
+    #[test]
+    fn settings_from_the_file_are_kept_in_range() {
+        let c: Config = toml::from_str("[device.\"*\"]\nhaptic = 250\ntorque = 0\n").unwrap();
+        let s = c.settings_for(&mx4());
+        assert_eq!((s.haptic, s.torque), (Some(100), Some(1)));
+        let c: Config = toml::from_str("[device.\"*\"]\ntorque = 200\n").unwrap();
+        assert_eq!(c.settings_for(&mx4()).torque, Some(100));
     }
 
     #[test]

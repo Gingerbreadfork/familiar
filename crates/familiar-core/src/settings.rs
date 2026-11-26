@@ -123,7 +123,7 @@ impl DeviceSettings {
         let name = *NAMES.iter().find(|n| **n == name).ok_or_else(|| SettingError::Unknown(name.into()))?;
         match name {
             "dpi" => self.dpi = Some(parse_num(name, value)?),
-            "haptic" => self.haptic = Some(parse_num::<u8>(name, value)?.min(100)),
+            "haptic" => self.haptic = Some(parse_num(name, value)?),
             "force" => self.force = Some(parse_num(name, value)?),
             "wheel" => {
                 self.wheel = Some(match value {
@@ -139,12 +139,19 @@ impl DeviceSettings {
                     Shift::Speed(parse_num::<u8>(name, value)?.clamp(1, 254))
                 })
             }
-            "torque" => self.torque = Some(parse_num::<u8>(name, value)?.clamp(1, 100)),
+            "torque" => self.torque = Some(parse_num(name, value)?),
             "wheel-invert" => self.wheel_invert = Some(parse_bool(name, value)?),
             "thumb-invert" => self.thumb_invert = Some(parse_bool(name, value)?),
             _ => unreachable!(),
         }
+        self.keep_in_range();
         Ok(name)
+    }
+
+    /// Brings haptic strength and torque within what the device takes.
+    pub fn keep_in_range(&mut self) {
+        self.haptic = self.haptic.map(|v| v.min(100));
+        self.torque = self.torque.map(|v| v.clamp(1, 100));
     }
 
     /// The settings that are set, in their command line form.
@@ -351,6 +358,8 @@ mod tests {
         assert_eq!(m["wheel"], "free");
         assert_eq!(m["thumb-invert"], "on");
         assert_eq!(m["haptic"], "100");
+        s.set_str("torque", "0").unwrap();
+        assert_eq!(s.torque, Some(1));
         assert!(s.set_str("colour", "red").is_err());
         assert!(s.set_str("dpi", "lots").is_err());
     }
