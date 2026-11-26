@@ -60,9 +60,9 @@ holding a button hard.
 
 An action can be a keyboard shortcut, a media key, a mouse button, a shell
 command, a pointer speed, a switch to another computer or a haptic pattern.
-A button set to another mouse button is remapped inside the mouse, so it
-works even when the daemon is not running. Nothing is sent while the screen
-is locked. See [docs/buttons.md](docs/buttons.md).
+A button set to another mouse button is remapped inside the mouse, so the
+click comes straight from the mouse. Nothing is sent while the screen is
+locked. See [docs/buttons.md](docs/buttons.md).
 
 ### Scrolling
 

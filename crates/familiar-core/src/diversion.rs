@@ -87,7 +87,7 @@ fn mouse_control(b: MouseButton) -> u16 {
 
 /// Works out how to handle each bound button on a device with these controls.
 /// A button bound to a mouse button is remapped in the device when it can be,
-/// so it needs no injection and keeps working without the daemon.
+/// so it needs no injection.
 pub fn plan(bindings: &BTreeMap<String, Binding>, controls: &[reprog::Control]) -> Plan {
     let mut out = Plan::default();
     for (name, binding) in bindings {

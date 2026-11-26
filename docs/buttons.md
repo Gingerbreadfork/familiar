@@ -44,8 +44,9 @@ normal behaviour.
 
 A button bound straight to an action follows the button: `key:` shortcuts and
 mouse buttons stay pressed while you hold it. A button bound to another mouse
-button, such as `back = "mouse:middle"`, is remapped inside the mouse, so it
-works even when the daemon is not running.
+button, such as `back = "mouse:middle"`, is remapped inside the mouse, so the
+mouse sends that button itself and nothing is injected. Like every binding it
+lasts while the daemon runs; stopping the daemon puts the button back.
 
 ## Gestures
 
