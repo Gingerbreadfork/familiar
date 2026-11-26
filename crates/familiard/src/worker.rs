@@ -543,6 +543,15 @@ impl Worker {
         }
     }
 
+    /// Reads the device's settings and publishes them, after a change made
+    /// outside an apply.
+    fn report_settings(&mut self, index: u8) {
+        let Some(slot) = self.slots.get_mut(&index) else { return };
+        let settings = settings::read(&mut slot.device);
+        let errors = slot.button_errors.clone();
+        let _ = self.updates.send(Update::Settings { endpoint: self.endpoint.clone(), index, settings, errors });
+    }
+
     fn event(&mut self, p: Packet) {
         if let Some(c) = receiver::parse_connection(&p) {
             debug!(?c, "connection notification");
@@ -739,11 +748,14 @@ impl Worker {
                     self.connect(index, Some(0), Some(Instant::now()));
                 }
             }
-            Command::Device { index, action } => {
-                if let Err(e) = self.device_action(index, action) {
-                    warn!(index, ?action, "button action failed: {e}");
+            Command::Device { index, action } => match self.device_action(index, action) {
+                Err(e) => warn!(index, ?action, "button action failed: {e}"),
+                // These change a setting that clients show.
+                Ok(()) if matches!(action, DeviceAction::Dpi(_) | DeviceAction::SmartShiftToggle) => {
+                    self.report_settings(index)
                 }
-            }
+                Ok(()) => {}
+            },
             Command::Shutdown => {}
         }
     }
@@ -1173,6 +1185,17 @@ mod tests {
             assert_eq!(&r.keys(2).await[1..], &[(k("KEY_LEFTSHIFT"), false)]);
             tokio::time::sleep(Duration::from_millis(700)).await;
             assert_eq!(r.keys.0.lock().unwrap().len(), 2, "a press cut short does not turn into a hold");
+            r.stop().await;
+        }
+
+        #[tokio::test]
+        async fn a_button_that_changes_the_dpi_reports_it() {
+            let mut r = rig("[profile.default.buttons]\nback = \"dpi:3200\"\n").await;
+            r.sim.press(0x0053);
+            match next(&mut r.updates).await {
+                Update::Settings { settings, .. } => assert_eq!(settings.dpi, Some(3200)),
+                other => panic!("expected settings, got {other:?}"),
+            }
             r.stop().await;
         }
 
