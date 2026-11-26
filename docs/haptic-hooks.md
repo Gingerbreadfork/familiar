@@ -32,11 +32,17 @@ __familiar_precmd() {
     __familiar_ready=1
 }
 trap '__familiar_preexec' DEBUG
-PROMPT_COMMAND="__familiar_status${PROMPT_COMMAND:+;$PROMPT_COMMAND};__familiar_precmd"
+if [[ $(declare -p PROMPT_COMMAND 2>/dev/null) == "declare -a"* ]]; then
+    PROMPT_COMMAND=(__familiar_status "${PROMPT_COMMAND[@]}" __familiar_precmd)
+else
+    PROMPT_COMMAND="__familiar_status${PROMPT_COMMAND:+;$PROMPT_COMMAND};__familiar_precmd"
+fi
 ```
 
 `__familiar_status` runs first so it sees the command's exit status, and
-`__familiar_precmd` runs last so other prompt commands are not timed.
+`__familiar_precmd` runs last so other prompt commands are not timed. Some
+distributions, Fedora among them, set `PROMPT_COMMAND` up as a list, which is
+why both forms are handled.
 
 ## zsh
 
