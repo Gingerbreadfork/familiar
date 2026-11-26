@@ -544,6 +544,19 @@ fn binding_item(b: &Binding) -> toml_edit::Item {
     }
 }
 
+/// Sets `key` in `table`. A value that replaces another keeps the comments
+/// and spacing around it.
+fn put(table: &mut dyn toml_edit::TableLike, key: &str, mut item: toml_edit::Item) {
+    if let Some(slot) = table.get_mut(key)
+        && let (Some(old), Some(new)) = (slot.as_value(), item.as_value_mut())
+    {
+        *new.decor_mut() = old.decor().clone();
+        *slot = item;
+    } else {
+        table.insert(key, item);
+    }
+}
+
 /// Removes `keys`, a path below `[profile.<profile>]`, when it exists.
 fn remove_from_profile(doc: &mut toml_edit::DocumentMut, profile: &str, keys: &[&str]) {
     let Some((last, parents)) = keys.split_last() else { return };
@@ -569,9 +582,11 @@ fn set_fields(
         let t = profile_table(doc, profile, section)?;
         for (k, v) in fields {
             match v {
-                Some(item) => t.insert(k, item),
-                None => t.remove(k),
-            };
+                Some(item) => put(t, k, item),
+                None => {
+                    t.remove(k);
+                }
+            }
         }
     } else {
         for (k, v) in fields {
@@ -612,7 +627,7 @@ pub fn persist_button(path: &Path, profile: &str, button: &str, binding: Option<
         Some(b) => vec![(
             target,
             Box::new(move |doc: &mut toml_edit::DocumentMut| {
-                profile_table(doc, profile, "buttons")?.insert(button, binding_item(b));
+                put(profile_table(doc, profile, "buttons")?, button, binding_item(b));
                 Ok(())
             }),
         )],
@@ -728,9 +743,7 @@ pub fn persist(path: &Path, section: &str, settings: &DeviceSettings) -> Result<
         .ok_or_else(|| shape(format!("`device.\"{section}\"` must be a table")))?;
 
     use toml_edit::value;
-    let mut put = |key: &str, item: toml_edit::Item| {
-        table.insert(key, item);
-    };
+    let mut put = |key: &str, item: toml_edit::Item| put(table, key, item);
     if let Some(v) = settings.dpi {
         put("dpi", value(v as i64));
     }
@@ -1066,6 +1079,52 @@ wheel = \"none\"\n",
         assert_eq!(c.notifications.battery_low, 20);
         let s = c.settings_for(&mx4());
         assert_eq!((s.dpi, s.smartshift), (Some(1200), Some(Shift::Off)));
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn changing_a_value_keeps_its_comments() {
+        let dir = std::env::temp_dir().join(format!("familiar-comments-{}", std::process::id()));
+        let path = dir.join("config.toml");
+        fs::create_dir_all(&dir).unwrap();
+        let before = "\
+[device.\"B042\"]
+# pointer speed
+dpi = 1600             # 200-8000 in steps of 50
+
+[profile.default.buttons]
+# the thumb button
+back = \"key:alt+left\"  # goes back
+
+[profile.default.scroll]
+smooth = false   # hi-res
+speed = 1.0      # times the mouse's own
+";
+        fs::write(&path, before).unwrap();
+
+        persist(&path, "B042", &DeviceSettings { dpi: Some(1200), ..Default::default() }).unwrap();
+        let next: Binding = Binding::Direct("mouse:middle".parse().unwrap());
+        persist_button(&path, "default", "back", Some(&next)).unwrap();
+        persist_scroll(&path, "default", &Scroll { smooth: Some(true), speed: Some(2.0) }).unwrap();
+
+        let after = before
+            .replace("dpi = 1600", "dpi = 1200")
+            .replace("\"key:alt+left\"", "\"mouse:middle\"")
+            .replace("smooth = false", "smooth = true")
+            .replace("speed = 1.0", "speed = 2.0");
+        assert_eq!(fs::read_to_string(&path).unwrap(), after);
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn a_binding_written_as_a_table_can_be_replaced() {
+        let dir = std::env::temp_dir().join(format!("familiar-subtable-{}", std::process::id()));
+        let path = dir.join("config.toml");
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(&path, "[profile.default.buttons.haptic]\ntap = \"key:super\"\n").unwrap();
+        let next: Binding = Binding::Direct("mouse:middle".parse().unwrap());
+        persist_button(&path, "default", "haptic", Some(&next)).unwrap();
+        assert_eq!(Config::load(&path).unwrap().buttons("default").unwrap()["haptic"], next);
         fs::remove_dir_all(&dir).unwrap();
     }
 }
