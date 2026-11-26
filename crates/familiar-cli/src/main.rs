@@ -323,14 +323,15 @@ fn cmd_diff(cli: &Cli) -> Result<()> {
             .iter()
             .map(|(n, w, h, s)| serde_json::json!({"setting": n, "config": w, "device": h, "state": s}))
             .collect();
-        return print_json(&v);
-    }
-    println!("{:<14} {:<10} {:<10}", "setting", "config", "device");
-    for (n, w, h, s) in rows {
-        println!("{n:<14} {w:<10} {h:<10} {s}");
-    }
-    if let Some(a) = applied {
-        println!("\nsettings applied {a}");
+        print_json(&v)?;
+    } else {
+        println!("{:<14} {:<10} {:<10}", "setting", "config", "device");
+        for (n, w, h, s) in rows {
+            println!("{n:<14} {w:<10} {h:<10} {s}");
+        }
+        if let Some(a) = applied {
+            println!("\nsettings applied {a}");
+        }
     }
     if differ > 0 {
         bail!("{differ} setting(s) differ from the config");
