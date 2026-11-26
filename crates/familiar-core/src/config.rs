@@ -37,8 +37,7 @@ pub struct Config {
     pub device: BTreeMap<String, DeviceSettings>,
     #[serde(default)]
     pub notifications: Notifications,
-    /// Button behaviour, by profile. `default` applies everywhere; others
-    /// apply when their `match` fits the focused app.
+    /// Button behaviour, by profile. Only `default` is applied so far.
     #[serde(default)]
     pub profile: BTreeMap<String, Profile>,
     /// The file that last defined each device section, where saves go.
@@ -66,7 +65,7 @@ pub struct Profile {
     pub thumb_wheel: Option<ThumbWheel>,
 }
 
-/// Which focused app a profile applies to. Any field that is set must match.
+/// Which focused app a profile is meant for. Read but not applied yet.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct Match {
