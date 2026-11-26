@@ -4,11 +4,18 @@
 		options: { value: T; label: string }[];
 		value: T;
 		disabled?: boolean;
-		onchange: (v: T) => void;
+		/** A result of false puts the choice back. */
+		onchange: (v: T) => unknown;
 	}
 
 	let { label, options, value, disabled = false, onchange }: Props = $props();
 	const id = $props.id();
+
+	async function pick(v: T, picked: HTMLInputElement) {
+		if ((await onchange(v)) !== false) return;
+		const radios = picked.closest('fieldset')?.querySelectorAll('input') ?? [];
+		for (const radio of radios) radio.checked = radio.value === value;
+	}
 </script>
 
 <fieldset class="rocker" {disabled}>
@@ -16,7 +23,7 @@
 	<div class="bed">
 		{#each options as o (o.value)}
 			<label class={['seg', o.value === value && 'on']}>
-				<input type="radio" name={id} value={o.value} checked={o.value === value} onchange={() => onchange(o.value)} />
+				<input type="radio" name={id} value={o.value} checked={o.value === value} onchange={(e) => pick(o.value, e.currentTarget)} />
 				{o.label}
 			</label>
 		{/each}
